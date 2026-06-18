@@ -1,0 +1,18 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    track_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+track_velocity_controller:
+  ros__parameters:
+    joints:
+      - FR_JOINT
+      - FL_JOINT
+      - BR_JOINT
+      - BL_JOINT
+    interface_name: velocity

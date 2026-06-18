@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>gazebo_control</name>
+  <version>0.0.0</version>
+  <description>ROS2 joy RPM control node for Gazebo robot.</description>
+
+  <maintainer email="maintainer@example.com">maintainer</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+
+  <exec_depend>joy</exec_depend>
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>velocity_controllers</exec_depend>
+  <exec_depend>gazebo_ros2_control</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
