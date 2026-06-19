@@ -8,6 +8,10 @@ controller_manager:
     track_velocity_controller:
       type: velocity_controllers/JointGroupVelocityController
 
+    flipper_position_controller:
+      type: position_controllers/JointGroupPositionController
+
+
 track_velocity_controller:
   ros__parameters:
     joints:
@@ -15,4 +19,12 @@ track_velocity_controller:
       - FL_JOINT
       - BR_JOINT
       - BL_JOINT
-    interface_name: velocity
+
+
+flipper_position_controller:
+  ros__parameters:
+    joints:
+      - FRF_joint
+      - FLF_joint
+      - BRF_joint
+      - BLF_joint

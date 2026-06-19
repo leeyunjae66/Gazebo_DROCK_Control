@@ -22,9 +22,22 @@ ament_target_dependencies(joy_rpm_control_node
   rclcpp
   sensor_msgs
   std_msgs
+  geometry_msgs
 )
 
-install(TARGETS joy_rpm_control_node
+add_executable(flipper_joy_control_node
+  src/flipper_joy_control_node.cpp
+)
+
+ament_target_dependencies(flipper_joy_control_node
+  rclcpp
+  sensor_msgs
+  std_msgs
+)
+
+install(TARGETS
+  joy_rpm_control_node
+  flipper_joy_control_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
