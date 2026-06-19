@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 100
+    update_rate: 1000
 
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
@@ -9,7 +9,7 @@ controller_manager:
       type: velocity_controllers/JointGroupVelocityController
 
     flipper_position_controller:
-      type: position_controllers/JointGroupPositionController
+      type: joint_trajectory_controller/JointTrajectoryController
 
 
 track_velocity_controller:
@@ -19,6 +19,7 @@ track_velocity_controller:
       - FL_JOINT
       - BR_JOINT
       - BL_JOINT
+    interface_name: velocity
 
 
 flipper_position_controller:
@@ -28,3 +29,47 @@ flipper_position_controller:
       - FLF_joint
       - BRF_joint
       - BLF_joint
+
+    command_interfaces:
+      - effort
+
+    state_interfaces:
+      - position
+      - velocity
+
+    open_loop_control: false
+    allow_partial_joints_goal: false
+    allow_nonzero_velocity_at_trajectory_end: false
+
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+
+    # effort PID: 반드시 gains 키를 사용해야 함
+    gains:
+      FRF_joint:
+        p: 50.0
+        i: 0.0
+        d: 3.0
+        i_clamp: 1.0
+
+      FLF_joint:
+        p: 50.0
+        i: 0.0
+        d: 3.0
+        i_clamp: 1.0
+
+      BRF_joint:
+        p: 50.0
+        i: 0.0
+        d: 3.0
+        i_clamp: 1.0
+
+      BLF_joint:
+        p: 50.0
+        i: 0.0
+        d: 3.0
+        i_clamp: 1.0
+
+    constraints:
+      stopped_velocity_tolerance: 0.05
+      goal_time: 1.0
