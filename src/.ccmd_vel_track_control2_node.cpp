@@ -28,15 +28,12 @@ public:
     watchdog_timeout_sec_ =
       this->declare_parameter<double>("watchdog_timeout_sec", 0.30);
 
-    linear_scale_ =
-      this->declare_parameter<double>("linear_scale", 3.0);
-
-    angular_scale_ =
-      this->declare_parameter<double>("angular_scale", 8.0);
-
     gazebo_node_.reset(new gazebo::transport::Node());
+
+    // Gazebo master에 기본 namespace로 연결
     gazebo_node_->Init();
 
+    // 절대 Gazebo transport 토픽으로 직접 발행
     gazebo_pub_ =
       gazebo_node_->Advertise<gazebo::msgs::Twist>(gazebo_topic);
 
@@ -49,6 +46,8 @@ public:
 
     last_rx_time_ = this->now();
 
+    // [수정 사항] ROS 2 Humble 버전 호환을 위해 rclcpp::create_timer 프리 함수를 사용합니다.
+    // 템플릿 추론 오류를 방지하기 위해 콜백은 람다식 [this]() { ... } 으로 감싸 전달합니다.
     watchdog_timer_ = rclcpp::create_timer(
       this->get_node_base_interface(),
       this->get_node_timers_interface(),
@@ -58,12 +57,10 @@ public:
 
     RCLCPP_INFO(
       this->get_logger(),
-      "Bridge ready: ROS %s -> Gazebo %s | watchdog=%.2fs | linear_scale=%.2f | angular_scale=%.2f",
+      "Bridge ready: ROS %s -> Gazebo %s (Watchdog: %.2fs)",
       cmd_vel_topic.c_str(),
       gazebo_topic.c_str(),
-      watchdog_timeout_sec_,
-      linear_scale_,
-      angular_scale_);
+      watchdog_timeout_sec_);
   }
 
 private:
@@ -72,22 +69,18 @@ private:
     last_rx_time_ = this->now();
     received_command_ = true;
 
-    const double scaled_linear_x = msg->linear.x * linear_scale_;
-    const double scaled_angular_z = -msg->angular.z * angular_scale_;
-
     RCLCPP_INFO(
       this->get_logger(),
-      "RX /cmd_vel: linear_x=%.3f, angular_z=%.3f | scaled: linear_x=%.3f, angular_z=%.3f",
+      "RX /cmd_vel: linear_x=%.3f, angular_z=%.3f",
       msg->linear.x,
-      msg->angular.z,
-      scaled_linear_x,
-      scaled_angular_z);
+      msg->angular.z);
 
-    publishToGazebo(scaled_linear_x, scaled_angular_z);
+    publishToGazebo(msg->linear.x, -msg->angular.z);
   }
 
   void watchdogCallback()
   {
+    // 와치독 제한 시간이 0 이하로 들어올 경우, 와치독 기능을 완전히 정지합니다. (디버깅용)
     if (watchdog_timeout_sec_ <= 0.0) {
       return;
     }
@@ -100,11 +93,11 @@ private:
 
     if (elapsed > watchdog_timeout_sec_) {
       RCLCPP_WARN(
-        this->get_logger(),
+        this->get_logger(), 
         "Watchdog triggered (Elapsed: %.3fs > Timeout: %.3fs). Sending stop command.",
         elapsed,
         watchdog_timeout_sec_);
-
+      
       publishToGazebo(0.0, 0.0);
       received_command_ = false;
     }
@@ -138,11 +131,7 @@ private:
   rclcpp::TimerBase::SharedPtr watchdog_timer_;
 
   rclcpp::Time last_rx_time_;
-
   double watchdog_timeout_sec_{0.30};
-  double linear_scale_{3.0};
-  double angular_scale_{1.0};
-
   bool received_command_{false};
 };
 
