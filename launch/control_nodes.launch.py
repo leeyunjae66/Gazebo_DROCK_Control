@@ -50,6 +50,25 @@ def generate_launch_description():
         ),
 
         Node(
+            package="joy",
+            executable="joy_node",
+            name="joy_node",
+            output="screen",
+        ),
+
+        Node(
+            package="teleop_twist_joy",
+            executable="teleop_node",
+            name="teleop_twist_joy",
+            output="screen",
+            parameters=[{
+                "require_enable_button": False,
+                "axis_linear.x": 1,
+                "axis_angular.yaw": 3,
+            }],
+        ),
+
+        Node(
             package="gazebo_control",
             executable="cmd_vel_track_control_node",
             name="cmd_vel_track_control_node",

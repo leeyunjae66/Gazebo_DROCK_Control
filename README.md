@@ -1,20 +1,20 @@
 # gazebo_control
 
-ROS 2 control package for the **DROK_CK tracked robot** running in **Gazebo Classic**.
+ROS 2 control package for the **DROK_CK tracked robot** in **Gazebo Classic**.
 
 This package provides:
 
-* A bridge from ROS 2 `/cmd_vel` commands to the Gazebo `SimpleTrackedVehiclePlugin` transport topic.
-* Joystick-based position control for four flippers through a `JointTrajectoryController`.
-* Controller configuration for wheel-joint velocity interfaces and flipper effort-based trajectory control.
+* A `/cmd_vel` bridge to the Gazebo tracked-vehicle plugin.
+* Joystick-based control for four flippers.
+* Controller configuration for joint state broadcasting and trajectory-controlled flipper motion.
 
-> The robot model, URDF, Gazebo world, collision geometry, and tracked-vehicle plugin configuration are maintained in the `drok_gazebo` package. This package focuses on ROS 2 control nodes and controller settings.
+> This package focuses on ROS 2 control nodes and controller settings. The robot model, URDF, Gazebo world, and tracked-vehicle plugin configuration are maintained in the separate `drok_gazebo` package.
 
 ## Features
 
 ### `/cmd_vel` to Gazebo tracked-vehicle bridge
 
-`cmd_vel_track_control_node` subscribes to ROS 2 `geometry_msgs/msg/Twist` commands and publishes Gazebo Transport `gazebo::msgs::Twist` messages.
+`cmd_vel_track_control_node` converts ROS 2 `geometry_msgs/msg/Twist` commands into Gazebo Transport `gazebo::msgs::Twist` messages.
 
 ```text
 /cmd_vel
@@ -26,25 +26,21 @@ cmd_vel_track_control_node
 SimpleTrackedVehiclePlugin
 ```
 
-* `linear.x`: forward and reverse velocity
-* `angular.z`: yaw-rate command
-* The yaw command sign is inverted to match the Gazebo model convention.
-* A watchdog sends a stop command when `/cmd_vel` is not received for the configured timeout period.
+* `linear.x` controls forward and reverse motion.
+* `angular.z` controls yaw rate.
+* The yaw sign is inverted to match the Gazebo model convention.
+* A watchdog publishes a stop command when `/cmd_vel` is not received within the timeout interval.
 * Default watchdog timeout: `0.30 s`
 
-### Joystick-based flipper control
+### Flipper control via joystick
 
-`flipper_joy_control_node` receives `/joy` and `/joint_states`, then sends a `trajectory_msgs/msg/JointTrajectory` command to the flipper controller.
-
-```text
-FRF_joint  FLF_joint  BRF_joint  BLF_joint
-```
+`flipper_joy_control_node` listens to `/joy` and `/joint_states`, then sends a `trajectory_msgs/msg/JointTrajectory` command to the flipper controller.
 
 * Front flippers: `FRF_joint`, `FLF_joint`
 * Rear flippers: `BRF_joint`, `BLF_joint`
-* Initial targets are loaded from `/joint_states` to preserve the spawned flipper pose.
-* Per-joint sign parameters compensate for opposite URDF joint axes.
-* Target angles are limited to the configured range.
+* Initial targets are read from `/joint_states` so flippers keep their spawned pose.
+* Per-joint sign parameters compensate for inverted URDF joint axes.
+* Target angles are clamped to the configured limits.
 
 ## Package Layout
 
@@ -54,6 +50,8 @@ gazebo_control/
 ├── package.xml
 ├── config/
 │   └── controllers.yaml
+├── launch/
+│   └── control_nodes.launch.py
 └── src/
     ├── cmd_vel_track_control_node.cpp
     └── flipper_joy_control_node.cpp
@@ -63,53 +61,55 @@ gazebo_control/
 
 ```bash
 cd ~/yunjae/ros2_ws
-
 colcon build --packages-select gazebo_control
-
 source install/setup.bash
 ```
 
-## Running the System
+## Launching the Package
 
-Run the following commands in separate terminals.
+This package provides `launch/control_nodes.launch.py` to start both control nodes together.
 
-### 1. Launch Gazebo and the robot
+```bash
+source /opt/ros/humble/setup.bash
+source ~/yunjae/ros2_ws/install/setup.bash
+ros2 launch gazebo_control control_nodes.launch.py
+```
+
+### Available launch parameters
+
+* `linear_scale` (default: `3.0`)
+* `angular_scale` (default: `8.0`)
+* `watchdog_timeout_sec` (default: `0.30`)
+* `angle_rate` (default: `1.0`)
+* `min_angle` (default: `-1.45`)
+* `max_angle` (default: `1.45`)
+* `trajectory_duration` (default: `0.25`)
+* `command_period` (default: `0.20`)
+
+## Usage
+
+### Start Gazebo and the robot
 
 ```bash
 source /opt/ros/humble/setup.bash
 source ~/yunjae/ros2_ws/install/setup.bash
 source ~/yunjae/Gazebo/DROK_CK/install/setup.bash
-
 ros2 launch drok_gazebo gazebo.launch.py
 ```
 
-### 2. Start the `/cmd_vel` bridge
+### Start the command bridge
 
 ```bash
 ros2 run gazebo_control cmd_vel_track_control_node
 ```
 
-Default settings:
-
-```text
-ROS input topic       : /cmd_vel
-Gazebo output topic   : /gazebo/drok_gazebo/cmd_vel_twist
-Watchdog timeout      : 0.30 s
-```
-
-### 3. Start the joystick driver
+### Start the joystick driver
 
 ```bash
 ros2 run joy joy_node
 ```
 
-Check joystick messages:
-
-```bash
-ros2 topic echo /joy
-```
-
-### 4. Start drive teleoperation
+### Start drive teleoperation
 
 ```bash
 ros2 run teleop_twist_joy teleop_node --ros-args \
@@ -120,7 +120,7 @@ ros2 run teleop_twist_joy teleop_node --ros-args \
   -p scale_angular.yaw:=2.0
 ```
 
-### 5. Start flipper control
+### Start flipper control
 
 ```bash
 ros2 run gazebo_control flipper_joy_control_node
@@ -137,25 +137,23 @@ ros2 run gazebo_control flipper_joy_control_node
 | A button (`button[0]`)       | Store current flipper positions as hold targets |
 | B button (`button[1]`)       | Move all flippers gradually toward `0 rad`      |
 
-## Controllers
+## Controller Configuration
 
-`config/controllers.yaml` defines:
+The `config/controllers.yaml` file defines:
 
-```text
-joint_state_broadcaster
-track_velocity_controller
-flipper_position_controller
-```
+* `joint_state_broadcaster`
+* `flipper_position_controller`
 
-Flipper controller configuration:
+### Flipper controller settings
 
-```text
-type: joint_trajectory_controller/JointTrajectoryController
-command interface: effort
-state interfaces: position, velocity
-```
+* Controller type: `joint_trajectory_controller/JointTrajectoryController`
+* Command interface: `effort`
+* State interfaces: `position`, `velocity`
+* `open_loop_control`: `false`
+* `allow_partial_joints_goal`: `false`
+* `allow_nonzero_velocity_at_trajectory_end`: `false`
 
-Default PID gains:
+### PID gains
 
 ```yaml
 p: 50.0
@@ -172,7 +170,7 @@ ros2 control list_controllers
 
 ## Drive-Speed Tuning
 
-The drive speed is limited by both teleoperation output and the Gazebo tracked-vehicle plugin.
+Drive speed depends on teleoperation scaling and the Gazebo tracked-vehicle plugin limits.
 
 ```text
 teleop_twist_joy scale_linear.x
@@ -184,20 +182,20 @@ cmd_vel_track_control_node
 SimpleTrackedVehiclePlugin max_linear_speed
 ```
 
-Increase teleop output:
+Increase teleop output with:
 
 ```bash
 -p scale_linear.x:=3.0
 ```
 
-In the `drok_gazebo` URDF, ensure the plugin limit is high enough:
+Ensure the tracked-vehicle plugin limits are high enough in the `drok_gazebo` URDF.
 
-```xml
-<max_linear_speed>4.0</max_linear_speed>
-<max_angular_speed>8.0</max_angular_speed>
-```
+## Notes
 
-Verify command output:
+* This package assumes a compatible `drok_gazebo` robot package is installed and sourced.
+* The flipper control node expects `/joy` and `/joint_states` topics to be available.
+* Adjust launch parameters to tune drive scaling, flipper range, and command timing.
+
 
 ```bash
 ros2 topic echo /cmd_vel

@@ -29,10 +29,10 @@ public:
       this->declare_parameter<double>("watchdog_timeout_sec", 0.30);
 
     linear_scale_ =
-      this->declare_parameter<double>("linear_scale", 3.0);
+      this->declare_parameter<double>("linear_scale", 1.0);
 
     angular_scale_ =
-      this->declare_parameter<double>("angular_scale", 8.0);
+      this->declare_parameter<double>("angular_scale", 1.0);
 
     gazebo_node_.reset(new gazebo::transport::Node());
     gazebo_node_->Init();
